@@ -1,0 +1,79 @@
+{
+  "proje": {
+    "isim": "Akıllı Bütçe Asistanı",
+    "tanim": "Kullanıcıların kişisel finanslarını etkin bir şekilde yönetmelerini, tasarruf etmelerini ve finansal okuryazarlıklarını artırmalarını sağlayan, Yapay Zeka destekli, sezgisel ve kullanıcı dostu bir mobil bütçe yönetimi uygulaması.",
+    "anaHedefKitle": "Finansal farkındalığını artırmak isteyen, bütçe takibini kolaylaştırmak isteyen bireysel kullanıcılar.",
+    "temelCozulenProblem": "Karmaşık finansal verilerin anlaşılır hale getirilmesi, manuel bütçe takibinin zorluğu ve kişiye özel finansal öneri eksikliği."
+  },
+  "teknikOzellikler": {
+    "gelirGiderYonetimi": [
+      "Yapay Zeka destekli otomatik işlem kategorizasyonu",
+      "Sesli komut ile gelir/gider kaydı",
+      "OCR teknolojisi ile fiş/fatura okuma ve otomatik kayıt",
+      "Tekrarlayan ödemeler için otomatik hatırlatma ve kayıt (kira, faturalar vb.)",
+      "Çoklu para birimi desteği (TRY, USD, EUR, GBP)"
+    ],
+    "akilliButcePlanlama": [
+      "Geçmiş harcama alışkanlıklarına dayalı, YZ ile otomatik bütçe önerileri",
+      "Kullanıcı tanımlı özelleştirilebilir harcama kategorileri",
+      "Kısa ve uzun vadeli finansal hedef belirleme ve izleme (örn: araba alımı, tatil)",
+      "Bütçe limitleri aşılmadan önce proaktif uyarı bildirimleri",
+      "\"Ne olursa olsun\" senaryolu bütçe simülasyonları"
+    ],
+    "analizVeRaporlama": [
+      "İnteraktif ve detaylı görselleştirmeler (pasta, çizgi, sütun grafikleri)",
+      "Aylık/yıllık harcama trend ve eğilim analizleri",
+      "Dönemsel karşılaştırmalı analiz (Örn: Bu ay vs Geçen ay)",
+      "Kategori bazlı derinlemesine harcama analizi",
+      "Finansal sağlık durumunu özetleyen tek bir skor (Finansal Sağlık Skoru)",
+      "PDF ve CSV formatlarında detaylı özet rapor alma ve dışa aktarma"
+    ]
+  },
+  "yapayZekaEntegrasyonlari": {
+    "akilliFinansalAsistan": {
+      "ozellikler": [
+        "Doğal Dil İşleme (NLP) ile sohbet bazlı sorgulama (Örn: \"Bu ay en çok neye para harcadım?\")",
+        "Kişiselleştirilmiş tasarruf ve harcama önerileri",
+        "Olağandışı harcama kalıpları için risk analizi ve erken uyarı sistemi",
+        "Temel seviyede yatırım araçları hakkında eğitici içerik ve bilgilendirme"
+      ]
+    },
+    "tahmineDayaliAnalitik": {
+      "ozellikler": [
+        "Gelecek aylara yönelik gelir-gider tahminlemesi",
+        "Anomali tespiti ile beklenmedik veya şüpheli harcama uyarıları",
+        "Makine öğrenimi modeli ile zamanla gelişen otomatik kategorizasyon",
+        "Harcama alışkanlıklarındaki değişime göre dinamik bütçe ayarlama önerileri"
+      ]
+    }
+  },
+  "tasarimVeKullaniciDeneyimi": {
+    "tasarimFelsefesi": "Karmaşık finansal veriyi, sade, anlaşılır ve işlevsel bir arayüzle sunmak.",
+    "renkPaleti": {
+      "anaRenkler": {
+        "yesil": ["#2E7D32", "#4CAF50", "#A5D6A7"],
+        "mavi": ["#1976D2", "#2196F3", "#90CAF9"],
+        "beyaz": "#FFFFFF"
+      },
+      "aksanRenkleri": {
+        "turuncu": "#FF9800",
+        "kirmizi": "#F44336"
+      }
+    },
+    "uiUxPrensipleri": [
+      "Mobil öncelikli, minimalist ve modern tasarım",
+      "Tamamen responsive (duyarlı) arayüz (Mobil, Tablet, Masaüstü)",
+      "Erişilebilirlik standartlarına uyum (Büyük yazı tipleri, yüksek kontrast, screen reader desteği)",
+      "Sistem temalı otomatik karanlık/aydınlık mod desteği",
+      "Sık kullanılan aksiyonlar için hızlı erişim butonları"
+    ]
+  },
+  "hedefPlatform": "iOS ve Android (Native veya Cross-Platform Geliştirme)",
+  "oncelikliMVP": [
+    "Temel gelir-gider kaydı ve yönetimi",
+    "Manuel ve OCR ile fiş ekleme",
+    "YT destekli otomatik kategorizasyon",
+    "Temel grafiklerle görselleştirme",
+    "Bütçe limiti ve hedef belirleme"
+  ]
+}

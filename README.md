@@ -487,9 +487,8 @@ Bu proje MIT Lisansı altında lisanslanmıştır. Detaylar için [LICENSE](LICE
 
 ## 📞 İletişim
 
-- **Email**: [email@example.com]
-- **GitHub**: [https://github.com/username/akilli-butce-asistani]
-- **Demo**: [https://akilli-butce-asistani.replit.app]
+- **Email**: [tconline26@hotmail.com]
+- **GitHub**: [[https://github.com/tconline26/AkilliButce]]
 
 ## 🙏 Teşekkürler
 

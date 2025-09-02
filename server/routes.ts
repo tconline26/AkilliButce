@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupAuth, isAuthenticated, hashPassword, verifyPassword } from "./auth";
 import { 
   insertTransactionSchema, 
   insertBudgetSchema, 
@@ -11,16 +11,104 @@ import {
 } from "@shared/schema";
 import { z } from "zod";
 
+// Validation schemas
+const registerSchema = z.object({
+  email: z.string().email("Geçerli bir e-posta adresi giriniz"),
+  password: z.string().min(6, "Şifre en az 6 karakter olmalıdır"),
+  firstName: z.string().min(1, "Ad alanı zorunludur"),
+  lastName: z.string().min(1, "Soyad alanı zorunludur")
+});
+
+const loginSchema = z.object({
+  email: z.string().email("Geçerli bir e-posta adresi giriniz"),
+  password: z.string().min(1, "Şifre gereklidir")
+});
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
 
   // Auth routes
+  app.post('/api/auth/register', async (req, res) => {
+    try {
+      const { email, password, firstName, lastName } = registerSchema.parse(req.body);
+      
+      // Check if user already exists
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser) {
+        return res.status(400).json({ message: "Bu e-posta adresi zaten kullanımda" });
+      }
+      
+      // Hash password and create user
+      const hashedPassword = await hashPassword(password);
+      const user = await storage.createUser({
+        email,
+        password: hashedPassword,
+        firstName,
+        lastName
+      });
+      
+      // Create session
+      req.session.userId = user.id;
+      
+      // Remove password from response
+      const { password: _, ...userWithoutPassword } = user;
+      res.json(userWithoutPassword);
+    } catch (error) {
+      console.error("Register error:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
+      res.status(500).json({ message: "Kayıt işlemi başarısız" });
+    }
+  });
+
+  app.post('/api/auth/login', async (req, res) => {
+    try {
+      const { email, password } = loginSchema.parse(req.body);
+      
+      // Find user by email
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        return res.status(401).json({ message: "Geçersiz e-posta veya şifre" });
+      }
+      
+      // Verify password
+      const isValidPassword = await verifyPassword(password, user.password);
+      if (!isValidPassword) {
+        return res.status(401).json({ message: "Geçersiz e-posta veya şifre" });
+      }
+      
+      // Create session
+      req.session.userId = user.id;
+      
+      // Remove password from response
+      const { password: _, ...userWithoutPassword } = user;
+      res.json(userWithoutPassword);
+    } catch (error) {
+      console.error("Login error:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
+      res.status(500).json({ message: "Giriş işlemi başarısız" });
+    }
+  });
+
+  app.post('/api/auth/logout', (req, res) => {
+    req.session?.destroy((err) => {
+      if (err) {
+        console.error("Logout error:", err);
+        return res.status(500).json({ message: "Çıkış işlemi başarısız" });
+      }
+      res.json({ message: "Başarıyla çıkış yapıldı" });
+    });
+  });
+
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      res.json(user);
+      const user = req.user;
+      const { password: _, ...userWithoutPassword } = user;
+      res.json(userWithoutPassword);
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
@@ -30,7 +118,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Categories routes
   app.get('/api/categories', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const categories = await storage.getCategories(userId);
       res.json(categories);
     } catch (error) {
@@ -41,7 +129,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/categories', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const categoryData = insertCategorySchema.parse({ ...req.body, userId });
       const category = await storage.createCategory(categoryData);
       res.json(category);
@@ -64,7 +152,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Transactions routes
   app.get('/api/transactions', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
       const transactions = await storage.getTransactions(userId, limit);
       res.json(transactions);
@@ -76,7 +164,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/transactions', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const transactionData = insertTransactionSchema.parse({ 
         ...req.body, 
         userId,
@@ -103,7 +191,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/transactions/monthly-stats', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const year = parseInt(req.query.year as string) || new Date().getFullYear();
       const month = parseInt(req.query.month as string) || new Date().getMonth() + 1;
       
@@ -118,7 +206,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Budgets routes
   app.get('/api/budgets', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const budgets = await storage.getBudgets(userId);
       
       // Calculate spending for each budget
@@ -146,7 +234,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/budgets', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const budgetData = insertBudgetSchema.parse({ 
         ...req.body, 
         userId,
@@ -164,7 +252,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Financial Goals routes
   app.get('/api/goals', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const goals = await storage.getFinancialGoals(userId);
       res.json(goals);
     } catch (error) {
@@ -175,7 +263,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/goals', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const goalData = insertFinancialGoalSchema.parse({ 
         ...req.body, 
         userId,
@@ -192,7 +280,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // AI Insights routes
   app.get('/api/insights', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const insights = await storage.getAiInsights(userId);
       res.json(insights);
     } catch (error) {
@@ -204,7 +292,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Chat routes
   app.get('/api/chat/messages', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
       const messages = await storage.getChatMessages(userId, limit);
       res.json(messages.reverse()); // Return in chronological order
@@ -216,7 +304,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/chat/message', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { message } = req.body;
       
       // Save user message
@@ -285,7 +373,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize default categories for new users
   app.post('/api/init/categories', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       
       const defaultCategories = [
         { name: "Gıda & İçecek", icon: "fas fa-utensils", color: "#4CAF50" },

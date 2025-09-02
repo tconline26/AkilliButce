@@ -33,16 +33,16 @@ export default function Profile() {
     aiInsights: true,
   });
 
-  // Redirect to home if not authenticated
+  // Redirect to login if not authenticated
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       toast({
-        title: "Unauthorized",
-        description: "You are logged out. Logging in again...",
+        title: "Oturum Sonlandı",
+        description: "Lütfen tekrar giriş yapın...",
         variant: "destructive",
       });
       setTimeout(() => {
-        window.location.href = "/api/login";
+        window.location.href = "/login";
       }, 500);
       return;
     }
@@ -64,8 +64,31 @@ export default function Profile() {
     });
   };
 
-  const handleLogout = () => {
-    window.location.href = '/api/logout';
+  const handleLogout = async () => {
+    try {
+      const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        toast({
+          title: "Çıkış Yapıldı",
+          description: "Başarıyla çıkış yaptınız.",
+        });
+        window.location.href = '/';
+      } else {
+        throw new Error('Çıkış işlemi başarısız');
+      }
+    } catch (error) {
+      toast({
+        title: "Hata",
+        description: "Çıkış işlemi sırasında bir hata oluştu.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleNotificationChange = (key: keyof typeof notifications, value: boolean) => {

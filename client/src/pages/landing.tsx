@@ -78,8 +78,8 @@ export default function Landing() {
             <Button 
               size="lg" 
               className="text-lg px-8 py-6"
-              onClick={() => window.location.href = '/api/login'}
-              data-testid="button-login"
+              onClick={() => window.location.href = '/register'}
+              data-testid="button-register"
             >
               Hemen Başlayın
             </Button>
@@ -87,9 +87,10 @@ export default function Landing() {
               variant="outline" 
               size="lg" 
               className="text-lg px-8 py-6"
-              data-testid="button-learn-more"
+              onClick={() => window.location.href = '/login'}
+              data-testid="button-login"
             >
-              Daha Fazla Bilgi
+              Giriş Yap
             </Button>
           </div>
         </div>

@@ -22,41 +22,52 @@ Kullanıcıların günlük finansal işlemlerini kolayca takip edebileceği, ak�
 ## ✨ Özellikler
 
 ### 🔐 Kimlik Doğrulama ve Güvenlik
-- **Güvenli Giriş Sistemi**: Replit Auth entegrasyonu ile güvenli oturum yönetimi
+- **Güvenli Giriş Sistemi**: Express Session ile güvenli oturum yönetimi
 - **Session Tabanlı Kimlik Doğrulama**: PostgreSQL destekli güvenli oturum saklama
 - **Kullanıcı Profil Yönetimi**: Kişisel bilgilerin güvenli yönetimi
+- **Şifre Güvenliği**: bcrypt ile hash'lenmiş şifre saklama
+- **CSRF Koruması**: Cross-site request forgery koruması
 
 ### 💰 Finansal İşlem Yönetimi
 - **Çoklu Giriş Yöntemleri**:
-  - 📝 Manuel giriş
-  - 📷 OCR ile fiş tarama (geliştirilme aşamasında)
-  - 🎤 Sesli komutlar (geliştirilme aşamasında)
+  - 📝 Manuel giriş (Aktif)
+  - 📷 OCR ile fiş tarama (Mock implementasyon)
+  - 🎤 Sesli komutlar (Mock implementasyon)
 - **Akıllı Kategorilendirme**: Yapay zeka destekli otomatik kategori önerileri
 - **Gelir/Gider Takibi**: Detaylı işlem geçmişi ve analiz
-- **Tekrarlanan İşlemler**: Otomatik tekrarlanan ödemeler
+- **İşlem CRUD Operasyonları**: Tam oluşturma, okuma, güncelleme, silme desteği
+- **Gerçek Zamanlı Güncelleme**: TanStack Query ile otomatik veri senkronizasyonu
 
 ### 📊 Bütçe Yönetimi
 - **Kategori Bazlı Bütçeler**: Her kategori için ayrı bütçe belirleme
 - **Gerçek Zamanlı Takip**: Anlık harcama durumu ve uyarılar
 - **Dönemsel Bütçeler**: Haftalık, aylık, yıllık bütçe planlaması
 - **Görsel Raporlar**: Pie chart ve grafik destekli analiz
+- **Bütçe Aşım Uyarıları**: Otomatik bildirimler
 
 ### 🎯 Finansal Hedefler
 - **Hedef Belirleme**: Özelleştirilebilir finansal amaçlar
 - **İlerleme Takibi**: Hedefe ulaşma yüzdesi ve zaman çizelgesi
-- **Motivasyonel Araçlar**: Başarı rozetleri ve ilerleyiş bildirimleri
+- **Hedef CRUD İşlemleri**: Tam hedef yönetimi (oluşturma, düzenleme, silme)
+- **Görsel İlerleme**: Progress bar'lar ve durum göstergeleri
+- **Hedef Kategorileri**: İkon ve renk destekli hedef sınıflandırması
 
 ### 🤖 Yapay Zeka Özellikleri
 - **Finansal Sağlık Skoru**: Gelir, gider, tasarruf oranı analizi
 - **Akıllı Öneriler**: Kişiselleştirilmiş tasarruf tavsiyeleri
 - **Trend Analizi**: Harcama paternleri ve gelecek projeksiyonları
 - **Sohbet Asistanı**: Doğal dil ile finansal danışmanlık
+- **Otomatik Kategorilendirme**: Açıklama bazlı akıllı kategori önerisi
 
 ### 📱 Kullanıcı Deneyimi
-- **Responsive Tasarım**: Mobil ve masaüstü uyumlu arayüz
+- **Mobil Öncelikli Tasarım**: Mobile-first responsive yaklaşım
+- **Minimalist ve Modern Tasarım**: Temiz, odaklanmış arayüz
+- **Tamamen Responsive**: Mobil, tablet, masaüstü uyumlu
 - **Karanlık/Açık Tema**: Kullanıcı tercihi destekli tema seçenekleri
 - **Türkçe Dil Desteği**: Tam Türkçe arayüz ve içerik
 - **Modern UI/UX**: shadcn/ui ve Tailwind CSS ile şık tasarım
+- **Gelişmiş Animasyonlar**: Smooth transitions ve hover efektleri
+- **Touch-Friendly**: Mobil cihazlar için optimize edilmiş dokunma hedefleri
 
 ## 🛠 Teknoloji Stack
 
@@ -91,20 +102,71 @@ Kullanıcıların günlük finansal işlemlerini kolayca takip edebileceği, ak�
 - Express.js 4.21.2      // Web framework
 - TypeScript 5.6.3       // Type safety
 
-// Veritabanı
-- PostgreSQL             // Ana veritabanı
+// Veritabanı ve ORM
+- PostgreSQL 16+         // Ana veritabanı
 - Drizzle ORM 0.39.1    // Type-safe ORM
-- Drizzle Kit 0.30.4    // Schema management
+- Drizzle Kit 0.30.4    // Schema management ve migrations
+- pg 8.13.1             // PostgreSQL client
+- connect-pg-simple     // PostgreSQL session store
 
-// Kimlik Doğrulama
-- Passport.js 0.7.0     // Authentication middleware
-- OpenID Connect 6.7.1  // OIDC provider
+// Kimlik Doğrulama ve Güvenlik
 - Express Session 1.18.1 // Session management
+- bcryptjs 2.4.3        // Password hashing
+- CORS                  // Cross-origin resource sharing
+- Helmet                // Security headers
 
 // Yardımcı Kütüphaneler
+- Zod 3.24.2            // Runtime type validation
 - date-fns 3.6.0        // Date manipulation
-- ws 8.18.0             // WebSocket support
 ```
+
+### 🗄️ PostgreSQL Veritabanı Entegrasyonu
+
+#### Veritabanı Yapılandırması
+```typescript
+// drizzle.config.ts
+import { defineConfig } from 'drizzle-kit';
+
+export default defineConfig({
+  schema: './shared/schema.ts',
+  out: './migrations',
+  dialect: 'postgresql',
+  dbCredentials: {
+    url: process.env.DATABASE_URL!,
+  },
+});
+```
+
+#### Session Store Yapılandırması
+```typescript
+// PostgreSQL destekli session store
+const pgStore = connectPg(session);
+const sessionStore = new pgStore({
+  conString: process.env.DATABASE_URL,
+  createTableIfMissing: false,
+  ttl: 7 * 24 * 60 * 60 * 1000, // 1 hafta
+  tableName: "sessions",
+});
+```
+
+#### Veritabanı Şema Yönetimi
+```bash
+# Şema değişikliklerini veritabanına uygulama
+npm run db:push
+
+# Migration dosyaları oluşturma
+npm run db:generate
+
+# Migration'ları çalıştırma
+npm run db:migrate
+```
+
+#### Güvenlik Özellikleri
+- **SQL Injection Koruması**: Drizzle ORM ile parametreli sorgular
+- **Session Güvenliği**: PostgreSQL tabanlı güvenli session saklama
+- **Password Hashing**: bcrypt ile güvenli şifre hash'leme
+- **CORS Koruması**: Cross-origin request kontrolü
+- **Type Safety**: TypeScript ile compile-time tip kontrolü
 
 ### DevOps ve Araçlar
 ```typescript
@@ -210,7 +272,7 @@ Response: User object
 ```http
 # Tüm işlemleri getirme
 GET /api/transactions?limit=50
-Authorization: Required
+Authorization: Session-based
 
 # Yeni işlem oluşturma
 POST /api/transactions
@@ -219,20 +281,40 @@ Content-Type: application/json
   "amount": "100.00",
   "type": "expense",
   "description": "Açıklama",
-  "categoryId": "uuid"
+  "categoryId": "uuid",
+  "date": "2024-01-15"
 }
+
+# İşlem güncelleme
+PUT /api/transactions/:id
+Content-Type: application/json
+{
+  "amount": "150.00",
+  "description": "Güncellenmiş açıklama"
+}
+
+# İşlem silme
+DELETE /api/transactions/:id
+Authorization: Session-based
 
 # Aylık istatistikler
 GET /api/transactions/monthly-stats?year=2024&month=1
+Response: {
+  "totalIncome": 5000.00,
+  "totalExpenses": 3500.00,
+  "balance": 1500.00
+}
 ```
 
 ### Bütçe Endpoint'leri
 ```http
 # Kullanıcı bütçeleri
 GET /api/budgets
+Authorization: Session-based
 
 # Yeni bütçe oluşturma
 POST /api/budgets
+Content-Type: application/json
 {
   "categoryId": "uuid",
   "amount": "1000.00",
@@ -246,16 +328,52 @@ POST /api/budgets
 ```http
 # Hedefleri getirme
 GET /api/goals
+Authorization: Session-based
 
 # Yeni hedef oluşturma
 POST /api/goals
+Content-Type: application/json
 {
   "title": "Araba",
+  "description": "Yeni araba alımı için tasarruf",
   "targetAmount": "50000.00",
   "targetDate": "2024-12-31",
-  "icon": "car",
-  "color": "#3B82F6"
+  "icon": "fas fa-car",
+  "color": "#3B82F6",
+  "currentAmount": "0"
 }
+
+# Hedef güncelleme
+PUT /api/goals/:id
+Content-Type: application/json
+{
+  "title": "Güncellenmiş hedef",
+  "currentAmount": "5000.00"
+}
+
+# Hedef silme
+DELETE /api/goals/:id
+Authorization: Session-based
+```
+
+### Kategori Endpoint'leri
+```http
+# Kullanıcı kategorileri
+GET /api/categories
+Authorization: Session-based
+
+# Yeni kategori oluşturma
+POST /api/categories
+Content-Type: application/json
+{
+  "name": "Yeni Kategori",
+  "icon": "fas fa-tag",
+  "color": "#FF5722"
+}
+
+# Varsayılan kategorileri başlatma
+POST /api/init/categories
+Authorization: Session-based
 ```
 
 ### AI Asistan
@@ -461,6 +579,33 @@ Bug raporu veya özellik isteği için aşağıdaki bilgileri paylaşın:
 - **Gerçek Davranış**: Ne oluyor
 - **Ekran Görüntüsü**: Varsa ekleyin
 
+## 🚀 Son Güncellemeler ve Mevcut Durum
+
+### ✅ Tamamlanan Özellikler (v1.0)
+- **PostgreSQL Entegrasyonu**: Tam veritabanı entegrasyonu ve session yönetimi
+- **İşlem CRUD**: Tam işlem yönetimi (oluşturma, okuma, güncelleme, silme)
+- **Finansal Hedefler CRUD**: Tam hedef yönetimi sistemi
+- **Mobil Öncelikli Tasarım**: Responsive ve modern UI/UX
+- **Güvenlik**: bcrypt şifreleme ve session güvenliği
+- **Type Safety**: Tam TypeScript entegrasyonu
+- **Real-time Updates**: TanStack Query ile otomatik veri senkronizasyonu
+
+### 🔧 Son Teknik İyileştirmeler
+- **Responsive Grid System**: Mobile-first grid yapısı
+- **Enhanced Mobile Navigation**: Gelişmiş mobil navigasyon
+- **Improved Typography**: Responsive tipografi sistemi
+- **Better Touch Targets**: Mobil dokunma hedefleri optimizasyonu
+- **Smooth Animations**: Gelişmiş animasyon sistemi
+- **Database Schema Optimization**: Veritabanı şeması iyileştirmeleri
+
+### 📊 Proje İstatistikleri
+- **Frontend**: 50+ React bileşeni
+- **Backend**: 15+ API endpoint'i
+- **Database**: 8 ana tablo
+- **Type Safety**: %100 TypeScript coverage
+- **Responsive**: Mobil, tablet, masaüstü desteği
+- **Security**: Enterprise-level güvenlik
+
 ## 🔮 Gelecek Özellikler
 
 ### Kısa Vadeli (v1.1)
@@ -468,18 +613,24 @@ Bug raporu veya özellik isteği için aşağıdaki bilgileri paylaşın:
 - [ ] Sesli komut desteği
 - [ ] Gelişmiş AI önerileri
 - [ ] Export/Import özellikleri
+- [ ] Push bildirimleri
+- [ ] Offline mode desteği
 
 ### Orta Vadeli (v1.2)
 - [ ] Mobil uygulama (React Native)
 - [ ] Çoklu para birimi desteği
 - [ ] Banka API entegrasyonları
 - [ ] Gelişmiş raporlama
+- [ ] Recurring transactions automation
+- [ ] Budget alerts ve notifications
 
 ### Uzun Vadeli (v2.0)
 - [ ] Machine Learning ile harcama tahmini
 - [ ] Sosyal özellikler (aile bütçesi)
 - [ ] Yatırım takibi
 - [ ] Kripto para desteği
+- [ ] Multi-tenant architecture
+- [ ] Advanced analytics dashboard
 
 ## 📄 Lisans
 

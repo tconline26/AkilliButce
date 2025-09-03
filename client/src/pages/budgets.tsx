@@ -11,11 +11,13 @@ import { Plus, Edit, Trash2 } from 'lucide-react';
 import { AIService } from '@/lib/aiService';
 import { apiRequest } from '@/lib/queryClient';
 import type { BudgetWithCategory } from '@/lib/types';
+import BudgetModal from '@/components/Modals/BudgetModal';
 
 export default function Budgets() {
   const { isAuthenticated, isLoading } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [showBudgetModal, setShowBudgetModal] = useState(false);
 
   // Redirect to home if not authenticated
   useEffect(() => {
@@ -33,13 +35,13 @@ export default function Budgets() {
   }, [isAuthenticated, isLoading, toast]);
 
   // Fetch budgets
-  const { data: budgets = [], isLoading: budgetsLoading } = useQuery({
+  const { data: budgets = [], isLoading: budgetsLoading } = useQuery<Array<BudgetWithCategory>>({
     queryKey: ['/api/budgets'],
     retry: false,
   });
 
   // Fetch categories
-  const { data: categories = [] } = useQuery({
+  const { data: categories = [] } = useQuery<Array<{ id: string; name: string; icon: string; color: string }>>({
     queryKey: ['/api/categories'],
     retry: false,
   });
@@ -109,6 +111,7 @@ export default function Budgets() {
         <Button 
           className="flex items-center gap-2"
           data-testid="button-add-budget"
+          onClick={() => setShowBudgetModal(true)}
         >
           <Plus size={16} />
           Yeni Bütçe
@@ -324,6 +327,7 @@ export default function Budgets() {
           </div>
         </CardContent>
       </Card>
+      <BudgetModal open={showBudgetModal} onOpenChange={setShowBudgetModal} />
     </div>
   );
 }

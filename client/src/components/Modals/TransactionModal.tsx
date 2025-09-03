@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -11,13 +11,15 @@ import { isUnauthorizedError } from '@/lib/authUtils';
 import { apiRequest } from '@/lib/queryClient';
 import { Plus, Minus } from 'lucide-react';
 import { TRANSACTION_TYPES, CURRENCY } from '@/lib/constants';
+import type { TransactionWithCategory } from '@/lib/types';
 
 interface TransactionModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  transaction?: TransactionWithCategory | null;
 }
 
-export default function TransactionModal({ open, onOpenChange }: TransactionModalProps) {
+export default function TransactionModal({ open, onOpenChange, transaction }: TransactionModalProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [formData, setFormData] = useState({
@@ -28,13 +30,32 @@ export default function TransactionModal({ open, onOpenChange }: TransactionModa
     date: new Date().toISOString().split('T')[0],
   });
 
-  const { data: categories = [] } = useQuery({
+  // Populate form when editing
+  useEffect(() => {
+    if (transaction) {
+      setFormData({
+        type: transaction.type,
+        amount: transaction.amount?.toString?.() ?? String(transaction.amount ?? ''),
+        description: transaction.description ?? '',
+        categoryId: transaction.categoryId ?? '',
+        date: new Date(transaction.date).toISOString().split('T')[0],
+      });
+    } else {
+      resetForm();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [transaction, open]);
+
+  const { data: categories = [] } = useQuery<Array<{ id: string; name: string; icon: string; color: string }>>({
     queryKey: ['/api/categories'],
     retry: false,
   });
 
-  const createTransactionMutation = useMutation({
+  const createOrUpdateMutation = useMutation({
     mutationFn: async (transactionData: any) => {
+      if (transaction?.id) {
+        return apiRequest('PUT', `/api/transactions/${transaction.id}`, transactionData);
+      }
       return apiRequest('POST', '/api/transactions', transactionData);
     },
     onSuccess: () => {
@@ -44,7 +65,7 @@ export default function TransactionModal({ open, onOpenChange }: TransactionModa
       resetForm();
       toast({
         title: "Başarılı",
-        description: "İşlem başarıyla kaydedildi.",
+        description: transaction?.id ? "İşlem güncellendi." : "İşlem başarıyla kaydedildi.",
       });
     },
     onError: (error) => {
@@ -61,7 +82,7 @@ export default function TransactionModal({ open, onOpenChange }: TransactionModa
       }
       toast({
         title: "Hata",
-        description: "İşlem kaydedilirken bir hata oluştu.",
+        description: transaction?.id ? "İşlem güncellenirken bir hata oluştu." : "İşlem kaydedilirken bir hata oluştu.",
         variant: "destructive",
       });
     },
@@ -99,7 +120,7 @@ export default function TransactionModal({ open, onOpenChange }: TransactionModa
       return;
     }
 
-    createTransactionMutation.mutate({
+    createOrUpdateMutation.mutate({
       ...formData,
       amount: amount.toString(),
       categoryId: formData.categoryId || null,
@@ -117,7 +138,7 @@ export default function TransactionModal({ open, onOpenChange }: TransactionModa
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md" data-testid="modal-transaction">
         <DialogHeader>
-          <DialogTitle>Yeni İşlem Ekle</DialogTitle>
+          <DialogTitle>{transaction ? 'İşlemi Düzenle' : 'Yeni İşlem Ekle'}</DialogTitle>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -231,10 +252,10 @@ export default function TransactionModal({ open, onOpenChange }: TransactionModa
             <Button 
               type="submit" 
               className="flex-1"
-              disabled={createTransactionMutation.isPending}
+              disabled={createOrUpdateMutation.isPending}
               data-testid="button-save-transaction"
             >
-              {createTransactionMutation.isPending ? 'Kaydediliyor...' : 'Kaydet'}
+              {createOrUpdateMutation.isPending ? (transaction ? 'Güncelleniyor...' : 'Kaydediliyor...') : (transaction ? 'Güncelle' : 'Kaydet')}
             </Button>
           </div>
         </form>

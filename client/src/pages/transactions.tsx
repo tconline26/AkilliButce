@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar, Search, Plus, Filter, Download } from 'lucide-react';
+import { Calendar, Search, Plus, Filter, Download, Edit3, Trash2 } from 'lucide-react';
 import TransactionModal from '@/components/Modals/TransactionModal';
 import { AIService } from '@/lib/aiService';
 import { CURRENCY } from '@/lib/constants';
@@ -20,9 +20,43 @@ export default function Transactions() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [showTransactionModal, setShowTransactionModal] = useState(false);
+  const [editingTransaction, setEditingTransaction] = useState<TransactionWithCategory | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
   const [filterCategory, setFilterCategory] = useState<string>('all');
+
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return fetch(`/api/transactions/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      }).then(async (res) => {
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(text || 'Delete failed');
+        }
+        return true;
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/transactions/monthly-stats'] });
+      toast({ title: 'Silindi', description: 'İşlem silindi.' });
+    },
+    onError: (error: any) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: 'Unauthorized',
+          description: 'You are logged out. Logging in again...',
+          variant: 'destructive',
+        });
+        setTimeout(() => { window.location.href = '/api/login'; }, 500);
+        return;
+      }
+      toast({ title: 'Hata', description: 'Silme işlemi başarısız.', variant: 'destructive' });
+    }
+  });
 
   // Redirect to home if not authenticated
   useEffect(() => {
@@ -40,13 +74,13 @@ export default function Transactions() {
   }, [isAuthenticated, isLoading, toast]);
 
   // Fetch transactions
-  const { data: transactions = [], isLoading: transactionsLoading } = useQuery({
+  const { data: transactions = [], isLoading: transactionsLoading } = useQuery<TransactionWithCategory[]>({
     queryKey: ['/api/transactions'],
     retry: false,
   });
 
   // Fetch categories
-  const { data: categories = [] } = useQuery({
+  const { data: categories = [] } = useQuery<Array<{ id: string; name: string }>>({
     queryKey: ['/api/categories'],
     retry: false,
   });
@@ -106,25 +140,25 @@ export default function Transactions() {
   }
 
   return (
-    <div className="space-y-6" data-testid="transactions-page">
+    <div className="space-responsive-y" data-testid="transactions-page">
       {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold" data-testid="text-page-title">İşlemler</h1>
-          <p className="text-muted-foreground">Tüm gelir ve giderlerinizi görüntüleyin ve yönetin</p>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex-1 min-w-0">
+          <h1 className="text-responsive-xl font-bold truncate" data-testid="text-page-title">İşlemler</h1>
+          <p className="text-responsive-sm text-muted-foreground">Tüm gelir ve giderlerinizi görüntüleyin ve yönetin</p>
         </div>
         <Button 
           onClick={() => setShowTransactionModal(true)}
-          className="flex items-center gap-2"
+          className="flex items-center gap-2 w-full sm:w-auto"
           data-testid="button-add-transaction"
         >
           <Plus size={16} />
-          Yeni İşlem
+          <span className="sm:inline">Yeni İşlem</span>
         </Button>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="responsive-grid-1-3">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Toplam Gelir</CardTitle>
@@ -256,7 +290,7 @@ export default function Transactions() {
                         </div>
                       </div>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right flex items-center gap-3">
                       <div className={`font-semibold ${
                         transaction.type === 'income' ? 'text-success' : 'text-destructive'
                       }`} data-testid={`text-amount-${transaction.id}`}>
@@ -266,6 +300,28 @@ export default function Transactions() {
                         {getSourceIcon(transaction.source)}
                         <span className="ml-1">{getSourceLabel(transaction.source)}</span>
                       </Badge>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          setEditingTransaction(transaction);
+                          setShowTransactionModal(true);
+                        }}
+                        aria-label="Edit"
+                        data-testid={`button-edit-${transaction.id}`}
+                      >
+                        <Edit3 size={16} />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => deleteMutation.mutate(transaction.id)}
+                        disabled={deleteMutation.isPending}
+                        aria-label="Delete"
+                        data-testid={`button-delete-${transaction.id}`}
+                      >
+                        <Trash2 size={16} />
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -278,7 +334,11 @@ export default function Transactions() {
       {/* Transaction Modal */}
       <TransactionModal
         open={showTransactionModal}
-        onOpenChange={setShowTransactionModal}
+        onOpenChange={(open) => {
+          setShowTransactionModal(open);
+          if (!open) setEditingTransaction(null);
+        }}
+        transaction={editingTransaction}
       />
     </div>
   );

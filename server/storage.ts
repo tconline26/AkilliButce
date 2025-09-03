@@ -37,17 +37,19 @@ export interface IStorage {
   getDefaultCategories(): Promise<Category[]>;
   
   // Transaction operations
-  getTransactions(userId: string, limit?: number): Promise<(Transaction & { category?: Category })[]>;
+  getTransactions(userId: string, limit?: number): Promise<(Transaction & { category?: Category | null })[]>;
   createTransaction(transaction: InsertTransaction): Promise<Transaction>;
-  getTransactionsByDateRange(userId: string, startDate: Date, endDate: Date): Promise<(Transaction & { category?: Category })[]>;
+  getTransactionsByDateRange(userId: string, startDate: Date, endDate: Date): Promise<(Transaction & { category?: Category | null })[]>;
   getMonthlyStats(userId: string, year: number, month: number): Promise<{
     totalIncome: number;
     totalExpenses: number;
     balance: number;
   }>;
+  updateTransaction(id: string, userId: string, data: Partial<InsertTransaction>): Promise<Transaction>;
+  deleteTransaction(id: string, userId: string): Promise<void>;
   
   // Budget operations
-  getBudgets(userId: string): Promise<(Budget & { category?: Category })[]>;
+  getBudgets(userId: string): Promise<(Budget & { category?: Category | null })[]>;
   createBudget(budget: InsertBudget): Promise<Budget>;
   updateBudget(id: string, budget: Partial<InsertBudget>): Promise<Budget>;
   getBudgetSpending(userId: string, categoryId: string, startDate: Date, endDate: Date): Promise<number>;
@@ -56,6 +58,7 @@ export interface IStorage {
   getFinancialGoals(userId: string): Promise<FinancialGoal[]>;
   createFinancialGoal(goal: InsertFinancialGoal): Promise<FinancialGoal>;
   updateFinancialGoal(id: string, goal: Partial<InsertFinancialGoal>): Promise<FinancialGoal>;
+  deleteFinancialGoal(id: string, userId: string): Promise<void>;
   
   // AI Insights operations
   getAiInsights(userId: string): Promise<AiInsight[]>;
@@ -158,6 +161,21 @@ export class DatabaseStorage implements IStorage {
       .values(transaction)
       .returning();
     return newTransaction;
+  }
+
+  async updateTransaction(id: string, userId: string, data: Partial<InsertTransaction>): Promise<Transaction> {
+    const [updated] = await db
+      .update(transactions)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(transactions.id, id), eq(transactions.userId, userId)))
+      .returning();
+    return updated as Transaction;
+  }
+
+  async deleteTransaction(id: string, userId: string): Promise<void> {
+    await db
+      .delete(transactions)
+      .where(and(eq(transactions.id, id), eq(transactions.userId, userId)));
   }
 
   async getTransactionsByDateRange(userId: string, startDate: Date, endDate: Date): Promise<(Transaction & { category?: Category })[]> {
@@ -311,6 +329,12 @@ export class DatabaseStorage implements IStorage {
       .where(eq(financialGoals.id, id))
       .returning();
     return updatedGoal;
+  }
+
+  async deleteFinancialGoal(id: string, userId: string): Promise<void> {
+    await db
+      .delete(financialGoals)
+      .where(and(eq(financialGoals.id, id), eq(financialGoals.userId, userId)));
   }
 
   // AI Insights operations

@@ -83,7 +83,7 @@ export default function Home() {
   }
 
   return (
-    <div className="space-y-8" data-testid="home-dashboard">
+    <div className="space-responsive-y" data-testid="home-dashboard">
       {/* Financial Overview */}
       <FinancialOverview />
 
@@ -91,7 +91,7 @@ export default function Home() {
       <QuickActions />
 
       {/* Recent Transactions & Budget Overview */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="responsive-grid-1-2">
         <RecentTransactions />
         <BudgetOverview />
       </div>

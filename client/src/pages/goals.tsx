@@ -52,9 +52,12 @@ export default function Goals() {
     retry: false,
   });
 
-  // Create goal mutation
-  const createGoalMutation = useMutation({
+  // Create/Update goal mutation
+  const createOrUpdateGoalMutation = useMutation({
     mutationFn: async (goalData: any) => {
+      if (editingGoal?.id) {
+        return apiRequest('PUT', `/api/goals/${editingGoal.id}`, goalData);
+      }
       return apiRequest('POST', '/api/goals', goalData);
     },
     onSuccess: () => {
@@ -63,7 +66,7 @@ export default function Goals() {
       resetForm();
       toast({
         title: "Başarılı",
-        description: "Yeni finansal hedef oluşturuldu.",
+        description: editingGoal?.id ? "Finansal hedef güncellendi." : "Yeni finansal hedef oluşturuldu.",
       });
     },
     onError: (error) => {
@@ -80,7 +83,39 @@ export default function Goals() {
       }
       toast({
         title: "Hata",
-        description: "Hedef oluşturulurken bir hata oluştu.",
+        description: editingGoal?.id ? "Hedef güncellenirken bir hata oluştu." : "Hedef oluşturulurken bir hata oluştu.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete goal mutation
+  const deleteGoalMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest('DELETE', `/api/goals/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/goals'] });
+      toast({
+        title: "Silindi",
+        description: "Finansal hedef silindi.",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Hata",
+        description: "Hedef silinirken bir hata oluştu.",
         variant: "destructive",
       });
     },
@@ -110,15 +145,36 @@ export default function Goals() {
       return;
     }
 
-    createGoalMutation.mutate({
+    const goalData = {
       title: formData.title,
       description: formData.description,
       targetAmount: formData.targetAmount,
       targetDate: formData.targetDate,
       icon: formData.icon,
       color: formData.color,
-      currentAmount: '0'
+      currentAmount: editingGoal?.currentAmount || '0'
+    };
+
+    createOrUpdateGoalMutation.mutate(goalData);
+  };
+
+  const handleEditGoal = (goal: FinancialGoal) => {
+    setEditingGoal(goal);
+    setFormData({
+      title: goal.title,
+      description: goal.description || '',
+      targetAmount: goal.targetAmount,
+      targetDate: new Date(goal.targetDate).toISOString().split('T')[0],
+      icon: goal.icon,
+      color: goal.color
     });
+    setShowGoalModal(true);
+  };
+
+  const handleDeleteGoal = (id: string) => {
+    if (window.confirm('Bu hedefi silmek istediğinizden emin misiniz?')) {
+      deleteGoalMutation.mutate(id);
+    }
   };
 
   const calculateProgress = (current: string, target: string) => {
@@ -277,10 +333,21 @@ export default function Goals() {
                         >
                           {goal.isCompleted ? 'Tamamlandı' : isOverdue ? 'Gecikmiş' : daysRemaining}
                         </Badge>
-                        <Button variant="ghost" size="sm" data-testid={`button-edit-goal-${goal.id}`}>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => handleEditGoal(goal)}
+                          data-testid={`button-edit-goal-${goal.id}`}
+                        >
                           <Edit size={16} />
                         </Button>
-                        <Button variant="ghost" size="sm" data-testid={`button-delete-goal-${goal.id}`}>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => handleDeleteGoal(goal.id)}
+                          disabled={deleteGoalMutation.isPending}
+                          data-testid={`button-delete-goal-${goal.id}`}
+                        >
                           <Trash2 size={16} />
                         </Button>
                       </div>
@@ -472,10 +539,10 @@ export default function Goals() {
               <Button 
                 type="submit" 
                 className="flex-1"
-                disabled={createGoalMutation.isPending}
+                disabled={createOrUpdateGoalMutation.isPending}
                 data-testid="button-save-goal"
               >
-                {createGoalMutation.isPending ? 'Kaydediliyor...' : (editingGoal ? 'Güncelle' : 'Kaydet')}
+                {createOrUpdateGoalMutation.isPending ? 'Kaydediliyor...' : (editingGoal ? 'Güncelle' : 'Kaydet')}
               </Button>
             </div>
           </form>

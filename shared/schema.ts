@@ -190,11 +190,16 @@ export const insertCategorySchema = createInsertSchema(categories).omit({
   createdAt: true,
 });
 
-export const insertTransactionSchema = createInsertSchema(transactions).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
+export const insertTransactionSchema = createInsertSchema(transactions)
+  .omit({
+    id: true,
+    createdAt: true,
+    updatedAt: true,
+  })
+  .extend({
+    // Accept both Date and date-like strings (e.g., "2024-09-03")
+    date: z.coerce.date(),
+  });
 
 export const insertBudgetSchema = createInsertSchema(budgets).omit({
   id: true,
@@ -202,11 +207,16 @@ export const insertBudgetSchema = createInsertSchema(budgets).omit({
   updatedAt: true,
 });
 
-export const insertFinancialGoalSchema = createInsertSchema(financialGoals).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
+export const insertFinancialGoalSchema = createInsertSchema(financialGoals)
+  .omit({
+    id: true,
+    createdAt: true,
+    updatedAt: true,
+  })
+  .extend({
+    // Accept both Date and date-like strings (e.g., "2024-09-03")
+    targetDate: z.coerce.date(),
+  });
 
 export const insertAiInsightSchema = createInsertSchema(aiInsights).omit({
   id: true,

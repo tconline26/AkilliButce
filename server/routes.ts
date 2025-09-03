@@ -31,35 +31,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes
   app.post('/api/auth/register', async (req, res) => {
     try {
+      console.log('Register request body:', req.body);
       const { email, password, firstName, lastName } = registerSchema.parse(req.body);
       
-      // Check if user already exists
+      console.log('Checking if user exists:', email);
       const existingUser = await storage.getUserByEmail(email);
       if (existingUser) {
+        console.log('User already exists:', email);
         return res.status(400).json({ message: "Bu e-posta adresi zaten kullanımda" });
       }
       
-      // Hash password and create user
+      console.log('Hashing password...');
       const hashedPassword = await hashPassword(password);
+      console.log('Creating user...');
       const user = await storage.createUser({
         email,
         password: hashedPassword,
         firstName,
         lastName
       });
-      
-      // Create session
+
+        
+      console.log('User created, setting session...');
       req.session.userId = user.id;
       
       // Remove password from response
       const { password: _, ...userWithoutPassword } = user;
+      console.log('Registration successful for:', email);
       res.json(userWithoutPassword);
     } catch (error) {
-      console.error("Register error:", error);
+      console.error("Register error:", {
+        message: error.message,
+        stack: error.stack,
+        code: error.code,
+        detail: error.detail,
+        hint: error.hint,
+        table: error.table,
+        constraint: error.constraint,
+        column: error.column,
+        dataType: error.dataType,
+        routine: error.routine,
+        originalError: error.originalError
+      });
+      
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: error.errors[0].message });
+        return res.status(400).json({ 
+          message: error.errors[0].message,
+          errors: error.errors 
+        });
       }
-      res.status(500).json({ message: "Kayıt işlemi başarısız" });
+      
+      res.status(500).json({ 
+        message: "Kayıt işlemi başarısız",
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
     }
   });
 
@@ -189,6 +214,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update transaction
+  app.put('/api/transactions/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const id = req.params.id as string;
+      const partialSchema = insertTransactionSchema.partial();
+      const rawUpdates: any = { ...req.body };
+      if (rawUpdates.date) {
+        // normalize date to Date BEFORE validation
+        rawUpdates.date = new Date(rawUpdates.date);
+      }
+      const updates = partialSchema.parse(rawUpdates);
+      const updated = await storage.updateTransaction(id, userId, updates);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating transaction:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message, errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update transaction" });
+    }
+  });
+
+  // Delete transaction
+  app.delete('/api/transactions/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const id = req.params.id as string;
+      await storage.deleteTransaction(id, userId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting transaction:", error);
+      res.status(500).json({ message: "Failed to delete transaction" });
+    }
+  });
+
   app.get('/api/transactions/monthly-stats', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
@@ -274,6 +335,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating financial goal:", error);
       res.status(500).json({ message: "Failed to create financial goal" });
+    }
+  });
+
+  // Update financial goal
+  app.put('/api/goals/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const id = req.params.id as string;
+      const partialSchema = insertFinancialGoalSchema.partial();
+      const rawUpdates: any = { ...req.body };
+      if (rawUpdates.targetDate) {
+        rawUpdates.targetDate = new Date(rawUpdates.targetDate);
+      }
+      const updates = partialSchema.parse(rawUpdates);
+      const updated = await storage.updateFinancialGoal(id, updates);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating financial goal:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message, errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update financial goal" });
+    }
+  });
+
+  // Delete financial goal
+  app.delete('/api/goals/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const id = req.params.id as string;
+      await storage.deleteFinancialGoal(id, userId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting financial goal:", error);
+      res.status(500).json({ message: "Failed to delete financial goal" });
     }
   });
 
